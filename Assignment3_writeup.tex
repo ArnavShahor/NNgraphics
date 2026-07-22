@@ -75,18 +75,22 @@
 \caption*{5 steps (left) vs.\ 50 steps (right)}
 \end{figure}
 
-\textbf{Discussion.}
+\textbf{Discussion.} All three outputs match their prompts. The old man is a bearded,
+wrinkled bust with visible brushwork; the campfire prompt gives five figures seated around
+a flame in a pine forest; and the rocket is an unmistakable finned rocket climbing on a
+plume. The ``oil painting'' wording clearly registers in the first two: both come out
+with a painted, textured look rather than a photographic one.
+
 \begin{itemize}
-  \item \emph{Stage 1 vs.\ Stage 2.} Stage 1 sets the overall composition and content at
-  low resolution (64$\times$64); it looks right but soft. Stage 2 is a conditional
-  super-resolution diffusion model that adds high-frequency detail (edges, texture) to
-  reach 256$\times$256. The content stays the same, but the sharpness and fine structure
-  improve a lot.
-  \item \emph{5 vs.\ 50 steps.} With only 5 denoising steps the sampler can't remove the
-  noise accurately, so the image is blurry, low-contrast, and hard to read. At 50 steps
-  each reverse step is a smaller, more accurate update, giving a much sharper, more coherent
-  image. (Both stages used the same step count in this comparison, so the effect combines
-  the stage-1 and stage-2 sampling quality.)
+  \item \emph{Stage 1 vs.\ Stage 2.} Stage 1 fixes the composition at 64$\times$64 --- the
+  content is already correct but soft. Stage 2 is a conditional super-resolution diffusion
+  model, and at 256$\times$256 it fills in the edges and texture (the old man's beard hairs,
+  the flame detail) without changing what the image depicts.
+  \item \emph{5 vs.\ 50 steps.} The difference is stark on the rocket. At 5 steps the sampler
+  can't clear the noise in time: the result is mostly blue/orange speckle with only a faint
+  vertical flame streak showing through, barely readable as a rocket. At 50 steps each reverse
+  step is a smaller, more accurate update and the rocket comes out clean and saturated. (Both
+  stages ran at the same step count here, so this combines stage-1 and stage-2 quality.)
 \end{itemize}
 
 \hrulefill
@@ -140,9 +144,11 @@ noisy & one-step estimate \\
 \caption*{$t=250$ (top), $t=500$ (middle), $t=750$ (bottom)}
 \end{table}
 
-\textbf{Discussion.} The one-step estimate is good at low noise ($t=250$) but degrades
-badly as $t$ rises: at $t=750$ it is blurry and washed out, because the model must
-reconstruct the entire clean image from almost pure noise in a single shot.
+\textbf{Discussion.} At $t=250$ the one-step estimate is already a clean campanile. As $t$
+rises it falls apart: at $t=500$ the tower is soft and washed out, and at $t=750$ it is a
+blurry, low-contrast blob. This is expected, since the model has to reconstruct the whole clean
+image from almost pure noise in a single shot, and at high noise there is not enough signal
+left to do that.
 
 \subsection*{Task 1.2b: Iterative Denoising (strided schedule)}
 
@@ -154,7 +160,9 @@ x_{t'} = \frac{\sqrt{\bar\alpha_{t'}}\,\beta_t}{1-\bar\alpha_t}\,\hat x_0
        + \sigma_t z,
 \]
 with $\alpha_t = \bar\alpha_t/\bar\alpha_{t'}$, $\beta_t = 1-\alpha_t$. The iterative loop
-was run starting from a test image noised to \texttt{i\_start = 10}.
+was run starting from a test image noised to \texttt{i\_start = 10}. (The noisy
+\texttt{i\_start = 10} image and the iteratively denoised result are shown side by side in
+Task 1.2c below.)
 
 \subsection*{Task 1.2c: One-Step vs.\ Iterative (same noise level, \texttt{i\_start = 10})}
 
@@ -166,16 +174,15 @@ was run starting from a test image noised to \texttt{i\_start = 10}.
 \caption*{noisy (i\_start=10) / iterative / one-step}
 \end{figure}
 
-\textbf{Discussion: why iterative denoising beats one-step with the same model.}
-Look at the rightmost panel above: the one-step result is a smeared, ghostly campanile,
-while the iterative one in the middle is crisp. Here is how we read it. At this noise
-level many different clean images could have produced the same noisy $x_t$, and the UNet
-only gets to output a single noise guess, so its one-shot answer lands on something like
-the average of all of them, which is exactly why the one-step result looks washed out. The iterative
-version instead peels off a little noise per step; after each step the image is slightly
-cleaner, fewer clean images are still consistent with it, and the model can commit to one
-of them and start filling in real detail. Same weights in both runs, so all of the gain
-comes from splitting the work into many small, easy steps rather than one big leap.
+\textbf{Discussion: why iterative denoising beats one-step with the same model.} The
+one-step panel on the right is a smeared, ghostly campanile, while the iterative one in the
+middle is a crisp tower against a clear sky. At this noise level many different clean images
+could have produced the same noisy $x_t$, and the UNet only outputs a single noise estimate,
+so its one-shot answer lands near the average of all of them --- which is why it looks washed
+out. The iterative version removes a little noise per step; after each step the image is
+slightly cleaner, fewer clean images are still consistent with it, and the model can commit
+to one and start filling in real detail. The weights are identical in both runs, so the gain
+comes entirely from splitting the work into many small steps rather than one big jump.
 
 \subsection*{Task 1.3: Sampling With and Without CFG}
 
@@ -205,12 +212,11 @@ $\gamma = 7$.
 \includegraphics[width=0.185\textwidth]{c33_9.png}
 \end{figure}
 
-\textbf{Discussion.} The top row (no CFG) is pretty underwhelming: dull, low-contrast,
-and a couple of them barely look like photos at all. The bottom row with $\gamma=7$ is a
-clear step up: sharper, more saturated, and much more convincingly photographic, which
-makes sense because guidance pushes away from the unconditional estimate and leans harder
-into the conditional one. The cost shows up in variety: our five CFG samples resemble each
-other more than the five un-guided ones do.
+\textbf{Discussion.} The no-CFG row is weak: the samples are dull and low-contrast, and a
+couple barely read as photos. The $\gamma=7$ row is a clear improvement: sharper, more
+saturated, and more convincingly photographic, because guidance pushes away from the
+unconditional estimate and leans harder into the conditional one. The cost is diversity: the
+five CFG samples resemble each other more than the five un-guided ones do.
 
 \hrulefill
 
@@ -282,11 +288,15 @@ at $t\approx960$, which destroys almost all of the input, so the model has to re
 chunks and produces a strong, creative edit that wanders well away from what we fed it. As
 \texttt{i\_start} grows the starting timestep drops (\texttt{i\_start}$=20$ is $t\approx390$),
 less noise is added, and more of the original signal survives, so by
-\texttt{i\_start}$=20$ the output stays close to the input. In short, \emph{small}
-\texttt{i\_start} gives the strongest, most creative edit and \emph{large} \texttt{i\_start}
-keeps you faithful to the original. This is clearest on the hand-drawn input, which only
-turns into a realistic photo at the \emph{small}-\texttt{i\_start} settings and stays close
-to the drawing at \texttt{i\_start}$=20$.
+\texttt{i\_start}$=20$ the output stays close to the input. On the campanile this shows up as
+a nice progression: at \texttt{i\_start}$=7$ the tower comes back with a red-and-white
+lighthouse top, at \texttt{i\_start}$=10$ it is a slimmer white lighthouse, and by
+\texttt{i\_start}$=20$ it has snapped back
+to essentially the original campanile. In short, \emph{small} \texttt{i\_start} gives the
+strongest, most creative edit and \emph{large} \texttt{i\_start} keeps you faithful to the
+original. This is clearest on the hand-drawn input, which only turns into a realistic photo
+at the \emph{small}-\texttt{i\_start} settings and stays close to the drawing at
+\texttt{i\_start}$=20$.
 
 \subsection*{Task 2.2: Inpainting}
 
@@ -321,11 +331,17 @@ forced back to the original image, re-noised to the current timestep, at every s
 \caption*{original / mask / inpainted}
 \end{figure}
 
-\textbf{Discussion.} The reverse process runs normally inside the mask, but at each step
-the region outside the mask is overwritten with the original image noised to match the
-current timestep. This keeps the surroundings fixed while letting the model generate new,
-context-consistent content inside the masked region. The boundary stays coherent because
-the model always sees the true (re-noised) surroundings while it denoises.
+\textbf{Discussion.} The reverse process runs normally inside the mask, but at each step the
+region outside the mask is overwritten with the original image noised to match the current
+timestep. This keeps the surroundings fixed while the model generates new content inside the
+mask. On the campanile the masked top is regenerated as a lighthouse-style lantern room, and
+it blends in reasonably: the surrounding sky and tower are untouched, though a faint seam is
+visible along the \emph{bottom} edge of the mask (the left and right edges run through flat
+sky and are effectively invisible). The custom mask on the avocado is a good illustration of the
+method's limits: with only the generic \texttt{"a high quality photo"} prompt, the model
+fills the masked pit region with a realistic woman's face, which is locally coherent but
+clashes with the flat pixel-art style around it. So the outside stays fixed by construction,
+but what gets generated inside is only as context-appropriate as the prompt allows.
 
 \subsection*{Task 2.3: Text-Conditioned Image-to-Image Translation}
 
@@ -344,13 +360,17 @@ on the provided test image.
 \caption*{i\_start = 1, 3, 5, 7, 10, 20}
 \end{figure}
 
-\textbf{Discussion.} Compared with the null-prompt edit in Task 2.1, the text prompt
-injects \emph{semantic} content, not just ``realism.'' At \emph{small} \texttt{i\_start} the
-image is heavily noised, so the model has enough freedom to generate a full rocket scene; as
-\texttt{i\_start} \emph{increases} more of the campanile structure is preserved and the
-output stays constrained by the original tower. The prompt controls which kind of real image
-the result is pulled toward, so the chosen words change what the edit becomes, while
-\texttt{i\_start} controls how strongly the input image constrains it.
+\textbf{Discussion.} Compared with the null-prompt edit in Task 2.1, the text prompt injects
+\emph{semantic} content, not just ``realism.'' At \texttt{i\_start}$=1$ the input is almost
+fully noised, so the model is free to build a complete rocket-launch scene: a finned
+rocket on a colored plume against a clear blue daytime sky, with a bright yellow burst at
+upper left. As \texttt{i\_start} \emph{increases} more of
+the campanile survives and pulls the result back toward the tower; by \texttt{i\_start}$=20$
+the campanile has returned, but with a red-and-white rocket nose cone on top --- something
+the null-prompt run at the same \texttt{i\_start} in Task 2.1 never produces, so the prompt
+is still biting even when the input strongly constrains the output. So the prompt decides
+\emph{what} the edit turns into, while \texttt{i\_start} decides \emph{how strongly} the
+original image constrains it.
 
 \hrulefill
 
@@ -374,10 +394,15 @@ $\gamma = 7$, denoised from pure noise (\texttt{i\_start = 0}).
 \caption*{upright: an old man / flipped: people around a campfire}
 \end{figure}
 
-\textbf{Discussion.} Because the two noise estimates are averaged (one on the image, one on
-its vertical flip), the reverse process is simultaneously pulled toward both prompts under
-their respective orientations. The result reads as an old man right-side up and as people
-around a campfire when flipped.
+\textbf{Discussion.} Averaging the two noise estimates (one on the image, one on its vertical
+flip) pulls the reverse process toward both prompts under their respective orientations. In
+our result the effect is uneven: the \emph{flipped} orientation reads clearly as people around
+a campfire --- a bright flame low-center with orange figures around it --- while the
+\emph{upright} orientation is the weaker of the two, coming out as loose oil-painting forms
+with a pale blob near the top that only loosely suggests a head rather than a convincing old
+man. So this sample is only a partially successful visual anagram: the campfire orientation
+is clearly recognizable, but the upright old-man orientation is weak. A cleaner result would
+likely need trying a few more seeds and keeping the best.
 
 \subsection*{Task 3.2: Hybrid Images (Bonus)}
 
@@ -397,16 +422,20 @@ $f_{\text{high}}$ is the estimate minus its own low-pass. $\gamma = 7$, \texttt{
 \caption*{hybrid (far: waterfalls / near: skull)}
 \end{figure}
 
-\textbf{Discussion: which prompt dominates far vs.\ near, and why.} The \textbf{waterfalls}
-prompt wins \emph{from a distance}, because it provides the low spatial frequencies that set
-the overall shape and layout, and our eyes rely more on low frequencies when an image is
-small or blurry. The \textbf{skull} prompt wins \emph{up close}, because it provides the high
-frequencies (fine texture and edges) that we only pick out at short range. Applying the
-low-pass/high-pass split to the \emph{noise estimate} instead of to the pixels makes the model
-build this split directly into the generated image, so one picture reads as two different
-subjects depending on how far away you are. It works best when the two subjects have a similar
-rough outline, so the low-frequency prompt sets the shape and the high-frequency prompt just
-adds texture on top.
+\textbf{Discussion: which prompt dominates far vs.\ near, and why.} In principle the
+\textbf{waterfalls} prompt should win \emph{from a distance}, since it supplies the low
+spatial frequencies that set the overall shape and layout (our eyes weight low frequencies
+more when an image is small or blurry), while the \textbf{skull} prompt should win \emph{up
+close} through the high frequencies --- fine texture and edges we only resolve at short
+range. Applying the low-pass/high-pass split to the \emph{noise estimate} rather than to the
+pixels builds this separation directly into the generated image. To test the far reading we
+downsampled our result to $16\times16$: a faint bright vertical form does emerge against the
+dark surround and could pass for a fall, but the skull still dominates even at that size, so
+the hybrid effect here is real but only partial rather than the clean two-subject switch we
+were aiming for. The trick works best when the two subjects share a similar rough outline so the
+low-frequency prompt can set the shape and the high-frequency prompt just adds texture on
+top; a better result here would likely need different seeds or a low-frequency prompt whose
+silhouette matches the skull more closely.
 
 \hrulefill
 
